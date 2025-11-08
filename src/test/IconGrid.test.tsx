@@ -1,4 +1,4 @@
-/// <reference types="vitest" />
+/// <reference types="vitest/globals" />
 // src/components/IconGrid.test.tsx
 import { render, screen } from "@testing-library/react";
 import { IconGrid} from "../components/IconGrid";
