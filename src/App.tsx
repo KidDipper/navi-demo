@@ -1,11 +1,12 @@
 // src/App.tsx
 import { useEffect, useState } from "react";
+import { IconGrid, type NavAction } from "./components/IconGrid";
 
 type UiLayoutConfig = {
   iconGridRows: number;
 };
 
-const NAV_ACTIONS = [
+const NAV_ACTIONS: NavAction[] = [
   { label: "自宅", icon: "🏠" },
   { label: "職場", icon: "🏢" },
   { label: "コンビニ", icon: "🏪" },
@@ -31,9 +32,7 @@ function App() {
         return res.json();
       })
       .then((json) => {
-        // 安全側フォールバック
-        const rows =
-          typeof json.iconGridRows === "number" ? json.iconGridRows : 2;
+        const rows = typeof json.iconGridRows === "number" ? json.iconGridRows : 2;
         setConfig({ iconGridRows: rows });
       })
       .catch((err) => {
@@ -45,8 +44,6 @@ function App() {
   const rows = config?.iconGridRows ?? 2;
   // 1行あたりのアイコン数（横3つ並べる想定）
   const cols = 3;
-  const maxItems = rows * cols;
-  const showing = NAV_ACTIONS.slice(0, maxItems);
 
   return (
     <div style={styles.app}>
@@ -69,33 +66,17 @@ function App() {
         </div>
       </section>
 
-      {/* グリッド（ここが 2行→3行） */}
+      {/* グリッド（ここが 2行→3行） - 共通コンポーネントを使用 */}
       <section style={styles.gridSection}>
         <div style={styles.gridHeader}>
           クイック目的地
-          <small style={{ marginLeft: 8, opacity: 0.6 }}>
-            {rows} 行表示（設定で変更）
-          </small>
+          <small style={{ marginLeft: 8, opacity: 0.6 }}>{rows} 行表示（設定で変更）</small>
         </div>
-        <div
-          style={{
-            ...styles.grid,
-            gridTemplateColumns: `repeat(${cols}, minmax(90px, 1fr))`,
-          }}
-        >
-          {showing.map((item) => (
-            <button key={item.label} style={styles.gridItem}>
-              <div style={styles.gridIcon}>{item.icon}</div>
-              <div style={styles.gridLabel}>{item.label}</div>
-            </button>
-          ))}
-        </div>
+        <IconGrid actions={NAV_ACTIONS} rows={rows} cols={cols} />
       </section>
 
       {/* フッター */}
-      <footer style={styles.footer}>
-        CI/CDで設定を変えて即反映するデモ画面です
-      </footer>
+      <footer style={styles.footer}>CI/CDで設定を変えて即反映するデモ画面です</footer>
     </div>
   );
 }
