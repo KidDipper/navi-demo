@@ -1,5 +1,5 @@
 // src/components/IconGrid.tsx
-import React from "react";
+import type { FC } from "react";
 
 export type NavAction = {
   label: string;
@@ -12,7 +12,7 @@ type Props = {
   cols?: number;
 };
 
-export const IconGrid: React.FC<Props> = ({ actions, rows, cols = 3 }) => {
+export const IconGrid: FC<Props> = ({ actions, rows, cols = 3 }) => {
   const max = rows * cols;
   const showing = actions.slice(0, max);
 
@@ -25,7 +25,7 @@ export const IconGrid: React.FC<Props> = ({ actions, rows, cols = 3 }) => {
       }}
       data-testid="icon-grid"
     >
-      {showing.map((item) => (
+      {showing.map((item: NavAction) => (
         <button
           key={item.label}
           style={{
