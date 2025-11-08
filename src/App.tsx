@@ -22,15 +22,22 @@ function App() {
 
   // 設定を読み込む（?ts=でキャッシュ回避）
   useEffect(() => {
-    fetch(`/config/ui-layout.json?ts=${Date.now()}`)
-      .then((res) => res.json())
+    const url = `${import.meta.env.BASE_URL}config/ui-layout.json?ts=${Date.now()}`;
+    fetch(url)
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error(`Failed to fetch config: ${res.status}`);
+        }
+        return res.json();
+      })
       .then((json) => {
         // 安全側フォールバック
         const rows =
           typeof json.iconGridRows === "number" ? json.iconGridRows : 2;
         setConfig({ iconGridRows: rows });
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error("Failed to load ui-layout.json:", err);
         setConfig({ iconGridRows: 2 });
       });
   }, []);
