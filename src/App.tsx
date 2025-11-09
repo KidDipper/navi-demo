@@ -20,8 +20,11 @@ const NAV_ACTIONS: NavAction[] = [
 
 function App() {
   const [config, setConfig] = useState<UiLayoutConfig | null>(null);
+  const [viewportWidth, setViewportWidth] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth : 1024,
+  );
 
-  // 設定を読み込む（?ts=でキャッシュ回避）
+  // 設定ファイルをキャッシュバスター付きで読み込む
   useEffect(() => {
     const url = `${import.meta.env.BASE_URL}config/ui-layout.json?ts=${Date.now()}`;
     fetch(url)
@@ -41,39 +44,79 @@ function App() {
       });
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const handleResize = () => setViewportWidth(window.innerWidth);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   const rows = config?.iconGridRows ?? 2;
-  // 1行あたりのアイコン数（横3つ並べる想定）
+  // 1行あたりのアイコン数。横3つ並べる想定。
   const cols = 3;
+  const isCompact = viewportWidth < 900;
 
   return (
     <div style={styles.app}>
-      {/* ヘッダー */}
-      <header style={styles.header}>
-        <div style={styles.appTitle}>Navi Demo</div>
-        <div style={styles.subtitle}>現在地：刈谷市駅周辺</div>
-      </header>
+      <div style={styles.shell}>
+        {/* ヘッダー */}
+        <header style={styles.header}>
+          <div>
+            <div style={styles.appTitle}>Navi Demo</div>
+            <div style={styles.subtitle}>ハンズオン用デモインターフェース</div>
+          </div>
+          <div style={styles.locationTag}>現在地: 名古屋市栄周辺</div>
+        </header>
 
-      {/* 情報カード */}
-      <section style={styles.infoSection}>
-        <div style={styles.infoCard}>
-          <div style={styles.infoTitle}>目的地</div>
-          <div style={styles.infoValue}>トヨタ記念館</div>
-          <div style={styles.infoMeta}>約 25 分 / 13 km</div>
-        </div>
-        <div style={styles.infoCard}>
-          <div style={styles.infoTitle}>渋滞レベル</div>
-          <div style={styles.badgeRed}>やや混雑</div>
-        </div>
-      </section>
+        <section
+          style={{
+            ...styles.mainGrid,
+            gridTemplateColumns: isCompact ? "1fr" : "repeat(2, minmax(0, 1fr))",
+          }}
+        >
+          {/* ヒーローカード */}
+          <div style={styles.hero}>
+            <div style={styles.panelHead}>
+              <div>
+                <div style={styles.panelLabel}>目的地</div>
+                <div style={styles.heroDestination}>トヨタ記念館</div>
+              </div>
+              <div style={styles.heroBadge}>ETA 25分</div>
+            </div>
+            <div style={styles.progressTrack}>
+              <div style={styles.progressValue} />
+            </div>
+            <div style={styles.heroStats}>
+              <div style={styles.heroStat}>
+                <span style={styles.statLabel}>残距離</span>
+                <span style={styles.statValue}>13 km</span>
+              </div>
+              <div style={styles.heroStat}>
+                <span style={styles.statLabel}>平均速度</span>
+                <span style={styles.statValue}>45 km/h</span>
+              </div>
+              <div style={styles.heroStat}>
+                <span style={styles.statLabel}>渋滞レベル</span>
+                <span style={styles.badgeRed}>やや混雑</span>
+              </div>
+            </div>
+          </div>
 
-      {/* グリッド（ここが 2行→3行） - 共通コンポーネントを使用 */}
-      <section style={styles.gridSection}>
-        <div style={styles.gridHeader}>
-          クイック目的地
-          <small style={{ marginLeft: 8, opacity: 0.6 }}>{rows} 行表示（設定で変更）</small>
-        </div>
-        <IconGrid actions={NAV_ACTIONS} rows={rows} cols={cols} />
-      </section>
+          {/* クイック目的地 */}
+          <div style={styles.quickPanel}>
+            <div style={styles.panelHead}>
+              <div>
+                <div style={styles.panelLabel}>クイック目的地</div>
+                <div style={styles.panelSubLabel}>現在地: 名古屋市栄周辺</div>
+              </div>
+              <div style={styles.panelMeta}>行数は設定で変更可</div>
+            </div>
+            <IconGrid actions={NAV_ACTIONS} rows={rows} cols={cols} />
+          </div>
+        </section>
+      </div>
 
       {/* フッター */}
       <footer style={styles.footer}>CI/CDで設定を変えて即反映するデモ画面です</footer>
@@ -89,45 +132,113 @@ const styles: Record<string, React.CSSProperties> = {
     fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
     paddingBottom: "60px",
   },
+  shell: {
+    maxWidth: "960px",
+    margin: "0 auto",
+    padding: "32px clamp(16px, 4vw, 48px)",
+  },
   header: {
-    padding: "16px 20px 8px",
+    paddingBottom: "16px",
     borderBottom: "1px solid rgba(255,255,255,0.04)",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "16px",
   },
   appTitle: {
     fontSize: "1.2rem",
     fontWeight: 700,
   },
   subtitle: {
-    fontSize: "0.7rem",
-    opacity: 0.7,
+    fontSize: "0.75rem",
+    opacity: 0.65,
     marginTop: 4,
   },
-  infoSection: {
+  locationTag: {
+    padding: "6px 14px",
+    borderRadius: "999px",
+    background: "rgba(59, 130, 246, 0.15)",
+    border: "1px solid rgba(59, 130, 246, 0.35)",
+    fontSize: "0.75rem",
+  },
+  mainGrid: {
+    display: "grid",
+    gap: "24px",
+    gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+    marginTop: "32px",
+  },
+  hero: {
+    padding: "24px 28px",
+    borderRadius: "28px",
+    background: "rgba(15, 23, 42, 0.65)",
+    border: "1px solid rgba(148, 163, 184, 0.28)",
+    boxShadow: "0 25px 70px rgba(3, 7, 18, 0.65)",
+    backdropFilter: "blur(18px)",
+  },
+  panelHead: {
     display: "flex",
-    gap: "12px",
-    padding: "16px 20px 4px",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "24px",
   },
-  infoCard: {
-    background: "rgba(15, 23, 42, 0.5)",
-    border: "1px solid rgba(148, 163, 184, 0.18)",
-    borderRadius: "16px",
-    padding: "12px 14px",
-    minWidth: "140px",
-    boxShadow: "0 20px 45px rgba(0,0,0,0.25)",
-  },
-  infoTitle: {
-    fontSize: "0.7rem",
+  panelLabel: {
+    fontSize: "0.75rem",
+    letterSpacing: "0.08em",
+    textTransform: "uppercase",
     opacity: 0.7,
   },
-  infoValue: {
-    fontSize: "1rem",
-    fontWeight: 600,
+  panelSubLabel: {
     marginTop: 4,
+    fontSize: "0.8rem",
+    opacity: 0.65,
   },
-  infoMeta: {
-    fontSize: "0.65rem",
-    opacity: 0.6,
+  panelMeta: {
+    fontSize: "0.75rem",
+    opacity: 0.7,
+  },
+  heroDestination: {
+    fontSize: "2rem",
+    fontWeight: 700,
     marginTop: 6,
+  },
+  heroBadge: {
+    padding: "6px 14px",
+    borderRadius: "999px",
+    background: "rgba(59, 130, 246, 0.18)",
+    border: "1px solid rgba(59, 130, 246, 0.45)",
+    fontSize: "0.8rem",
+  },
+  progressTrack: {
+    height: "6px",
+    borderRadius: "999px",
+    background: "rgba(255, 255, 255, 0.08)",
+    marginTop: "20px",
+  },
+  progressValue: {
+    width: "55%",
+    height: "100%",
+    borderRadius: "inherit",
+    background: "linear-gradient(90deg, #38bdf8, #22d3ee)",
+    boxShadow: "0 0 12px rgba(34, 211, 238, 0.65)",
+  },
+  heroStats: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+    gap: "16px",
+    marginTop: "24px",
+  },
+  heroStat: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "4px",
+  },
+  statLabel: {
+    fontSize: "0.75rem",
+    opacity: 0.7,
+  },
+  statValue: {
+    fontSize: "1.25rem",
+    fontWeight: 600,
   },
   badgeRed: {
     display: "inline-block",
@@ -135,37 +246,14 @@ const styles: Record<string, React.CSSProperties> = {
     border: "1px solid rgba(248, 113, 113, 0.6)",
     borderRadius: "999px",
     padding: "3px 10px",
-    fontSize: "0.6rem",
-    marginTop: 6,
+    fontSize: "0.75rem",
   },
-  gridSection: {
-    padding: "16px 20px",
-  },
-  gridHeader: {
-    fontWeight: 600,
-    marginBottom: 10,
-    display: "flex",
-    alignItems: "center",
-  },
-  grid: {
-    display: "grid",
-    gap: "12px",
-  },
-  gridItem: {
-    background: "rgba(15, 23, 42, 0.4)",
-    border: "1px solid rgba(148, 163, 184, 0.12)",
-    borderRadius: "14px",
-    padding: "12px 10px 10px",
-    textAlign: "center" as const,
-    cursor: "pointer",
-    transition: "all 0.2s",
-  },
-  gridIcon: {
-    fontSize: "1.5rem",
-  },
-  gridLabel: {
-    fontSize: "0.7rem",
-    marginTop: 6,
+  quickPanel: {
+    padding: "24px 24px 20px",
+    borderRadius: "24px",
+    background: "rgba(15, 23, 42, 0.5)",
+    border: "1px solid rgba(148, 163, 184, 0.2)",
+    boxShadow: "0 20px 60px rgba(2, 6, 23, 0.55)",
   },
   footer: {
     position: "fixed",
