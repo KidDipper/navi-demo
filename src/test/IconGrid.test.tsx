@@ -1,5 +1,6 @@
 /// <reference types="vitest/globals" />
 import { fireEvent, render, screen } from "@testing-library/react";
+import { vi } from "vitest";
 import { IconGrid, type NavAction } from "../components/IconGrid";
 
 const actions: NavAction[] = [
@@ -35,5 +36,12 @@ describe("IconGrid", () => {
     expect(firstButton).toHaveStyle({ transform: "translateY(-4px)" });
     fireEvent.mouseLeave(firstButton);
     expect(firstButton).toHaveStyle({ transform: "translateY(0)" });
+  });
+
+  test("onSelect を渡すとクリックで発火する", () => {
+    const handleSelect = vi.fn();
+    render(<IconGrid actions={actions} rows={2} cols={3} onSelect={handleSelect} />);
+    fireEvent.click(screen.getByRole("button", { name: /自宅/ }));
+    expect(handleSelect).toHaveBeenCalledWith(actions[0]);
   });
 });

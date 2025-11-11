@@ -18,11 +18,44 @@ const NAV_ACTIONS: NavAction[] = [
   { label: "設定", icon: "⚙️" },
 ];
 
+type DestinationInfo = {
+  name: string;
+  etaMinutes: number;
+  distanceKm: number;
+  baseSpeed: number;
+  trafficLevel: string;
+};
+
+const DESTINATION_PRESETS = {
+  memorial: {
+    name: "トヨタ記念館",
+    etaMinutes: 25,
+    distanceKm: 13,
+    baseSpeed: 45,
+    trafficLevel: "やや混雑",
+  },
+  home: {
+    name: "トヨタ車体本社",
+    etaMinutes: 18,
+    distanceKm: 21,
+    baseSpeed: 52,
+    trafficLevel: "順調",
+  },
+} satisfies Record<string, DestinationInfo>;
+
+const SPEED_UPDATE_INTERVAL = 4000;
+const SPEED_JITTER_RANGE = 10;
+const MIN_SPEED = 20;
+const MAX_SPEED = 90;
+const PANEL_WIDTH = 420;
+
 function App() {
   const [config, setConfig] = useState<UiLayoutConfig | null>(null);
   const [viewportWidth, setViewportWidth] = useState(() =>
     typeof window !== "undefined" ? window.innerWidth : 1024,
   );
+  const [destination, setDestination] = useState<DestinationInfo>(DESTINATION_PRESETS.memorial);
+  const [currentSpeed, setCurrentSpeed] = useState(DESTINATION_PRESETS.memorial.baseSpeed);
 
   // 設定ファイルをキャッシュバスター付きで読み込む
   useEffect(() => {
@@ -53,10 +86,34 @@ function App() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  useEffect(() => {
+    setCurrentSpeed(destination.baseSpeed);
+  }, [destination]);
+
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      setCurrentSpeed(() => {
+        const jitter = (Math.random() - 0.5) * SPEED_JITTER_RANGE;
+        const next = destination.baseSpeed + jitter;
+        const clamped = Math.max(MIN_SPEED, Math.min(MAX_SPEED, next));
+        return Math.round(clamped);
+      });
+    }, SPEED_UPDATE_INTERVAL);
+    return () => clearInterval(intervalId);
+  }, [destination]);
+
   const rows = config?.iconGridRows ?? 2;
   // 1行あたりのアイコン数。横3つ並べる想定。
   const cols = 3;
   const isCompact = viewportWidth < 900;
+
+  const handleQuickSelect = (action: NavAction) => {
+    if (action.label === "自宅") {
+      setDestination(DESTINATION_PRESETS.home);
+    } else {
+      setDestination(DESTINATION_PRESETS.memorial);
+    }
+  };
 
   return (
     <div style={styles.app}>
@@ -73,7 +130,10 @@ function App() {
         <section
           style={{
             ...styles.mainGrid,
-            gridTemplateColumns: isCompact ? "1fr" : "repeat(2, minmax(0, 1fr))",
+            flexDirection: isCompact ? "column" : "row",
+            flexWrap: isCompact ? "wrap" : "nowrap",
+            justifyContent: isCompact ? "center" : "space-between",
+            alignItems: isCompact ? "stretch" : "flex-start",
           }}
         >
           {/* ヒーローカード */}
@@ -81,9 +141,9 @@ function App() {
             <div style={styles.panelHead}>
               <div>
                 <div style={styles.panelLabel}>目的地</div>
-                <div style={styles.heroDestination}>トヨタ記念館</div>
+                <div style={styles.heroDestination}>{destination.name}</div>
               </div>
-              <div style={styles.heroBadge}>ETA 25分</div>
+              <div style={styles.heroBadge}>ETA {destination.etaMinutes}分</div>
             </div>
             <div style={styles.progressTrack}>
               <div style={styles.progressValue} />
@@ -91,15 +151,15 @@ function App() {
             <div style={styles.heroStats}>
               <div style={styles.heroStat}>
                 <span style={styles.statLabel}>残距離</span>
-                <span style={styles.statValue}>13 km</span>
+                <span style={styles.statValue}>{destination.distanceKm} km</span>
               </div>
               <div style={styles.heroStat}>
                 <span style={styles.statLabel}>平均速度</span>
-                <span style={styles.statValue}>45 km/h</span>
+                <span style={styles.statValue}>{currentSpeed} km/h</span>
               </div>
               <div style={styles.heroStat}>
                 <span style={styles.statLabel}>渋滞レベル</span>
-                <span style={styles.badgeRed}>やや混雑</span>
+                <span style={styles.trafficBadge}>{destination.trafficLevel}</span>
               </div>
             </div>
           </div>
@@ -113,7 +173,7 @@ function App() {
               </div>
               <div style={styles.panelMeta}>行数は設定で変更可</div>
             </div>
-            <IconGrid actions={NAV_ACTIONS} rows={rows} cols={cols} />
+            <IconGrid actions={NAV_ACTIONS} rows={rows} cols={cols} onSelect={handleQuickSelect} />
           </div>
         </section>
       </div>
@@ -162,12 +222,14 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "0.75rem",
   },
   mainGrid: {
-    display: "grid",
+    display: "flex",
     gap: "24px",
-    gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
     marginTop: "32px",
+    justifyContent: "center",
   },
   hero: {
+    flex: `0 0 ${PANEL_WIDTH}px`,
+    maxWidth: PANEL_WIDTH,
     padding: "24px 28px",
     borderRadius: "28px",
     background: "rgba(15, 23, 42, 0.65)",
@@ -222,8 +284,8 @@ const styles: Record<string, React.CSSProperties> = {
     boxShadow: "0 0 12px rgba(34, 211, 238, 0.65)",
   },
   heroStats: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+    display: "flex",
+    flexDirection: "column",
     gap: "16px",
     marginTop: "24px",
   },
@@ -240,7 +302,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "1.25rem",
     fontWeight: 600,
   },
-  badgeRed: {
+  trafficBadge: {
     display: "inline-block",
     background: "rgba(248, 113, 113, 0.15)",
     border: "1px solid rgba(248, 113, 113, 0.6)",
@@ -249,6 +311,8 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "0.75rem",
   },
   quickPanel: {
+    flex: `0 0 ${PANEL_WIDTH}px`,
+    maxWidth: PANEL_WIDTH,
     padding: "24px 24px 20px",
     borderRadius: "24px",
     background: "rgba(15, 23, 42, 0.5)",

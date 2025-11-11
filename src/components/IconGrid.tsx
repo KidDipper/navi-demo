@@ -10,9 +10,10 @@ type Props = {
   actions: NavAction[];
   rows: number;
   cols?: number;
+  onSelect?: (action: NavAction) => void;
 };
 
-export const IconGrid: FC<Props> = ({ actions, rows, cols = 3 }) => {
+export const IconGrid: FC<Props> = ({ actions, rows, cols = 3, onSelect }) => {
   const max = rows * cols;
   const showing = actions.slice(0, max);
   const [hovered, setHovered] = useState<string | null>(null);
@@ -33,6 +34,8 @@ export const IconGrid: FC<Props> = ({ actions, rows, cols = 3 }) => {
             key={item.label}
             onMouseEnter={() => setHovered(item.label)}
             onMouseLeave={() => setHovered(null)}
+            onClick={() => onSelect?.(item)}
+            type="button"
             style={{
               background: "linear-gradient(135deg, rgba(255,255,255,0.08), rgba(59,130,246,0.2))",
               border: "1px solid rgba(148, 163, 184, 0.3)",
